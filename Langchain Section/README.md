@@ -47,10 +47,10 @@ Ensure your pip is up to date before installing libraries.
 
 Install essential NLP and data analysis libraries:
 ``
-``
-`pip install pypdf`
-`pip install docx2txt`
-
+``\n
+`pip install pypdf`\n
+`pip install docx2txt`\n
+`pip install langchain_chroma`\n
 
 ---
 
