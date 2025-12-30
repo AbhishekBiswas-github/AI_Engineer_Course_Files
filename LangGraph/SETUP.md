@@ -53,7 +53,7 @@ Install essential NLP and data analysis libraries:
 - `pip install python-dotenv`
 - `pip install grandalf`
 - `pip install ipykernel`
-- 
+- `pip install mypy_ipython`
 
 ---
 
