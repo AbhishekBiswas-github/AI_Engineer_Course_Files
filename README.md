@@ -1,14 +1,22 @@
-I have created the below table form 3 tables of semantic model
+Understand the situation
 
-All Active Master Table = 
+SLA Master Table Copy = 
 SELECTCOLUMNS (
     FILTER (
         'IVM Dataset',
         LOWER ( TRIM ( 'IVM Dataset'[vuln_ivm_scope] ) ) = "yes"
             &&
-        LOWER(TRIM('IVM Dataset'[Vuln Status])) = "active"
+        LOWER ( TRIM ( 'IVM Dataset'[Vuln SLA Metric Scope] ) ) = "yes"
             &&
-        LOWER(TRIM('IVM Dataset'[Device Use Case])) = "ivm"
+        LOWER (
+            TRIM (
+                RELATED ( 'Master Account Mappings'[Accountable BU] )
+            )
+        ) IN { "sbu - avs", "sbu - imaging", "sbu - international", "sbu - pcs", "sbu - sto", "sbu - sto ai", "sbu - uscan" }
+        /*
+        &&
+        LOWER ( TRIM ( 'IVM Dataset'[Device Use Case] ) ) = "ivm"
+        */
     ),
 
     /* =============================
@@ -24,13 +32,10 @@ SELECTCOLUMNS (
         RELATED ( 'Active Accounts'[Product Support Group] ),
 
     /* =============================
-       Columns from Master Account Mapping
+       Columns from Master Account Mappings
        ============================= */
     "Cloud Accountable BU",
         RELATED ( 'Master Account Mappings'[Accountable BU] ),
-
-    // "Account ID",
-    //     RELA
 
     /* =============================
        Columns from IVM Dataset
@@ -167,8 +172,14 @@ SELECTCOLUMNS (
     "Vuln Unique ID",
         'IVM Dataset'[vuln_unique_id],
 
+    "Vuln SLA Metric Scope",
+        'IVM Dataset'[Vuln SLA Metric Scope],
+
+    "Vuln IVM Scope",
+        'IVM Dataset'[vuln_ivm_scope],
+
     /* =============================
-       Measures from IVM Dataset
+       Measures
        ============================= */
     "App Business Portfolio",
         [App Business Portfolio],
@@ -210,39 +221,6 @@ SELECTCOLUMNS (
         [Vuln TCS Remediation Scope]
 )
 
-And then created one more table 
-Qualys All Active Table = 
-CALCULATETABLE(
-    'All Active Master Table',
-    TREATAS(
-        VALUES('sca_database Accounts'[cloud_account_id]),
-        'All Active Master Table'[Device Cloud Account ID]
-    )
-)
 
-when i am trying to create a relationship between "sca_database Accounts'[cloud_account_id]" and "Qualys All Active Table[Device Cloud Account ID], 
-I am betting below error
-A circular dependency was detected: Qualys All Active Table[Qualys All Active Table], 993a4493-768d-590e-c694-50eb2c3311ab, Qualys All Active Table[Device Cloud Account ID], Qualys All Active Table[Qualys All Active Table].
-
-Below are the table list
-AgentList
-Archer Remediation Plans
-Cost Center Accountability
-Last Refresh Date
-Missing Agent
-Missing Agent Name
-Qualys All Active Table
-Qualys Report
-Qualys Report All Active
-Report Refresh Date
-sca_database AccountEnvironments
-sca_database Accounts
-sca_database AccountStatuses
-sca_database AccountWorkflows
-sca_database LandingZones
-sca_database Programs
-sca_database QuickSightGroups
-sca_database StrategicBusinessUnits
-sca_database SupportCategories
-sca_database Users
-Wiz Report
+Target SLA date is in this formet "24-04-2026 00:00:00" I need "24-04-2026" only 
+CHange the code to get only the date part
