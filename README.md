@@ -1,6 +1,4 @@
-Understand the situation
-
-SLA Master Table Copy = 
+SLA Master Table = 
 SELECTCOLUMNS (
     FILTER (
         'IVM Dataset',
@@ -181,46 +179,17 @@ SELECTCOLUMNS (
     /* =============================
        Measures
        ============================= */
-    "App Business Portfolio",
-        [App Business Portfolio],
-
-    "App Executive",
-        [App Business Portfolio Owner],
-
-    "Device Ephemeral",
-        [Device Ephemeral],
-
-    "Device Use Case",
-        [Device Use Case],
-
-    "Vuln Category",
-        [Vuln Category],
-
-    "Vuln Code Level",
-        [Vuln Code Level],
-
-    "Vuln EOL Tech",
-        [Vuln EOL Tech],
-
-    "Vuln Has Remediation Plan",
-        [Vuln Has Remediation Plan],
-
-    "Vuln HCL Remediation Scope",
-        [Vuln HCL Remediation Scope],
-
-    "Vuln Owner Category",
-        [Vuln Owner Category],
-
-    "Vuln Remediation Plan IDs",
-        [Vuln Remediation Plan IDs],
-
-    "Vuln Status",
-        [Vuln Status],
-
-    "Vuln TCS Remediation Scope",
-        [Vuln TCS Remediation Scope]
+    "App Business Portfolio", 'IVM Dataset'[App Business Portfolio],
+    "App Executive", 'IVM Dataset'[App Business Portfolio Owner],
+    "Device Ephemeral", 'IVM Dataset'[Device Ephemeral],
+    "Device Use Case", 'IVM Dataset'[Device Use Case],
+    "Vuln Category", 'IVM Dataset'[Vuln Category],
+    "Vuln Code Level", 'IVM Dataset'[Vuln Code Level],
+    "Vuln EOL Tech", 'IVM Dataset'[Vuln EOL Tech],
+    "Vuln Has Remediation Plan", 'IVM Dataset'[Vuln Has Remediation Plan],
+    "Vuln HCL Remediation Scope", 'IVM Dataset'[Vuln HCL Remediation Scope],
+    "Vuln Owner Category", 'IVM Dataset'[Vuln Owner Category],
+    "Vuln Remediation Plan IDs", 'IVM Dataset'[Vuln Remediation Plan IDs],
+    "Vuln Status", 'IVM Dataset'[Vuln Status],
+    "Vuln TCS Remediation Scope", 'IVM Dataset'[Vuln TCS Remediation Scope]
 )
-
-
-Target SLA date is in this formet "24-04-2026 00:00:00" I need "24-04-2026" only 
-CHange the code to get only the date part
