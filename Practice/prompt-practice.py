@@ -44,9 +44,9 @@ llm = ChatGroq(
 
 chain = chat_prompt | llm
 
-# print(chain.invoke({
-#     'description': "You are pet consultant.",
-#     'pet': 'Golden Retriever'    
-# }).content)
+print(chain.invoke({
+    'description': "You are pet consultant.",
+    'pet': 'Golden Retriever'    
+}).content)
 
-chain.get_graph().print_ascii()
+# chain.get_graph().print_ascii()
