@@ -35,11 +35,13 @@ graph LR
 ### Case Study: RAG Retriever Component Evaluation
 * **Objective:** Evaluate if a RAG Retriever correctly pulls relevant documents from a vector database.
 * **Success Metric:** **Recall@K**
-  $$	ext{Recall@K} = rac{	ext{Number of Relevant Documents Retrieved in Top K}}{	ext{Total Number of Relevant Documents in Ground Truth}}$$
+
+  > Recall@K = (Number of Relevant Documents Retrieved in Top K) ÷ (Total Number of Relevant Documents in Ground Truth)
+
 * **Golden Dataset:** A set of 50–100 realistic queries paired with human-annotated relevant document IDs (e.g., Document IDs `1001`, `1003`).
 
 ### Step-by-Step Workflow
-1. Pass query $Q_i$ to the retriever (e.g., $K=5$).
+1. Pass query *Q_i* to the retriever (e.g., *K=5*).
 2. Obtain retrieved document IDs.
 3. Use a Python script to compare retrieved IDs against golden document IDs.
 4. Calculate Recall@K per row and average across all rows.
@@ -48,7 +50,7 @@ graph LR
 If Recall@K is below the desired target (e.g., 67%), system engineers can:
 * Change or fine-tune embedding models.
 * Implement query expansion techniques.
-* Increase $K$ parameter values.
+* Increase *K* parameter values.
 * Introduce a Re-ranker stage.
 
 ---
@@ -112,7 +114,8 @@ graph TD
 * **Problem:** Subjective essay grading requires domain experts, making large-scale manual grading prohibitively expensive.
 * **Goal:** Build an automated LLM grading platform that mimics human expert grading behavior.
 * **Success Metric:** **Mean Absolute Error (MAE)** between Human Expert Scores and LLM Judge Scores.
-  $$	ext{MAE} = rac{1}{N} \sum_{i=1}^{N} | 	ext{Score}_{	ext{Human}} - 	ext{Score}_{	ext{LLM}} |$$
+
+  > MAE = (1/N) × Σ |Score_Human − Score_LLM|  (summed over all N examples)
 
 ### Step-by-Step Workflow
 1. **Rubric Definition:** Define multi-dimensional criteria (e.g., core concepts, logical flow, mechanisms, examples, balanced conclusion).
