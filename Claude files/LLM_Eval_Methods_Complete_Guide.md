@@ -24,12 +24,12 @@ graph TD
 Programmatic evaluation relies on traditional code algorithms and mathematical metrics to compute performance deterministically, without involving humans or LLMs during runtime execution.
 
 ```mermaid
-graph LR
+graph TD
     A[Input Query] --> B[Retriever System]
     B --> C[Top-K Documents]
     C --> D[Python Script]
     D --> E[Golden Ground Truth]
-    D --> F[Recall@K Score]
+    E --> F[Recall@K Score]
 ```
 
 ### Case Study: RAG Retriever Component Evaluation
