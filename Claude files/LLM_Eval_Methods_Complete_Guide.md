@@ -132,7 +132,6 @@ graph TD
 graph TD
     A[Dataset Evaluation Types] --> B[Reference-Based Evaluation]
     A --> C[Reference-Free Evaluation]
-
     B --> B1[Has Predefined Ground Truth / Correct Answer]
     C --> C1[Evaluates Quality Directly via Rubric Standards]
 ```
