@@ -28,7 +28,7 @@ graph LR
     A[Input Query] --> B[Retriever System]
     B --> C[Top-K Documents]
     C --> D[Python Script]
-    E[Golden Ground Truth] --> D
+    D --> E[Golden Ground Truth]
     D --> F[Recall@K Score]
 ```
 
