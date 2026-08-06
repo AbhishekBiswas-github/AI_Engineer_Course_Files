@@ -29,7 +29,7 @@ graph TD
     B --> C[Top-K Documents]
     C --> D[Python Script]
     D --> E[Golden Ground Truth]
-    E --> F[Recall at K Score]
+    E --> F[Recall@K Score]
 ```
 
 ### Case Study: RAG Retriever Component Evaluation
