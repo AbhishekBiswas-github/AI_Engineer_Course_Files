@@ -167,7 +167,7 @@ Delta Lake doesn't use traditional B-tree indexes like a relational database. In
 
 ```mermaid
 graph TD
-    A[Delta 'Indexing' Approaches] --> B[File Statistics -> min/max per column, automatic]
+    A[Delta 'Indexing' Approaches] --> B[File Statistics<br/>min/max per column, automatic]
     A --> C[Z-Ordering => co-locate related data]
     A --> D[Bloom Filter Indexes => fast existence checks]
 ```
