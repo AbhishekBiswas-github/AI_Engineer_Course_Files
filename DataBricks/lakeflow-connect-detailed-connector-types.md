@@ -40,6 +40,14 @@ graph LR
 
 Some SaaS connectors use browser-based OAuth (Confluence, Google Ads, HubSpot, Jira, Meta Ads, Slack, TikTok Ads, Zendesk) and require interactive sign-in — these can't be set up purely programmatically.
 
+> **Setup steps (Salesforce example):**
+> 1. Confirm prerequisites: Unity Catalog enabled, serverless compute enabled on the workspace, and `CREATE CONNECTION` privilege on the metastore if creating a new connection
+> 2. In the workspace sidebar, click **Data Ingestion** → **Add data** → select the connector (e.g. **Salesforce**) under Databricks connectors
+> 3. On the Connection page, either select an existing connection or create a new one — this triggers an OAuth 2.0 login flow against the source app (only authenticate via the link Databricks itself provides)
+> 4. Salesforce specifically requires the connected Databricks app be authorized by an admin if API Access Control is enabled — use a dedicated ingestion user, not a personal login
+> 5. Once authenticated, click **Create connection**, then continue the wizard to select objects/tables to ingest
+> 6. Configure the destination catalog/schema and a sync schedule, then create the pipeline — Lakeflow Connect auto-creates a job for that schedule
+
 ## Connector Type 2: Database Connectors (CDC)
 
 Managed connectors for relational databases, using **change data capture** to track every row-level change (insert/update/delete) rather than re-scanning tables.
@@ -79,6 +87,15 @@ graph TD
 **Networking:** the gateway needs a real network path to the database — VPN, AWS Direct Connect, Azure ExpressRoute, VPC/VNet peering, or a public endpoint all work, and cross-cloud connectivity is supported (e.g. gateway in Azure reaching a database in AWS).
 
 **Orchestration quirk:** because the gateway needs to run continuously (change capture doesn't happen on a fixed schedule), it runs as its own **continuous task** in a separate job from the ingestion pipeline itself.
+
+> **Setup steps (SQL Server example):**
+> 1. Ensure network connectivity between your Databricks workspace and the database — set up VPN, Direct Connect/ExpressRoute, or VPC/VNet peering beforehand, since the gateway must reach the source directly
+> 2. On the source database, enable CDC (or confirm it's already enabled) and create a dedicated database user with the required read/replication permissions for Databricks to use
+> 3. In the workspace, go to **Data Ingestion** → **Add data** → select the database connector (e.g. **SQL Server**)
+> 4. Create a Unity Catalog **connection** with the database's host, port, and credentials
+> 5. Configure the **ingestion gateway** — choose where it runs (inside your VPC/VNet if using peering) and which staging location to use
+> 6. Select the tables/schemas to ingest, and choose CDC or full-snapshot mode per table if the connector supports both
+> 7. Set the destination catalog/schema and create the pipeline — the gateway starts running continuously as its own job, separate from the scheduled ingestion pipeline job
 
 ## Connector Type 3: Query-Based Connectors
 
@@ -129,6 +146,14 @@ graph TD
 
 Query-based connectors also support a `deletion_condition` parameter to detect soft deletes (e.g. a row flagged `is_deleted = true` rather than physically removed).
 
+> **Setup steps:**
+> 1. Identify a column on the source table that increases monotonically and never decreases (e.g. `updated_at`, `id`) — this becomes your cursor column
+> 2. Ensure network connectivity from serverless compute to the source database (query-based connectors use Lakehouse Federation, so check federation networking requirements specifically)
+> 3. Create a Unity Catalog **connection** (or foreign catalog, for Lakehouse Federation-based ingestion) storing the database's credentials
+> 4. Define the **ingestion pipeline**, specifying the source table, the cursor column, and the desired history-tracking mode (`SCD_TYPE_1`, `SCD_TYPE_2`, or `APPEND_ONLY`)
+> 5. Optionally set a `deletion_condition` if the source uses soft deletes you want reflected downstream
+> 6. Set the destination catalog/schema and a schedule, then create the pipeline — no gateway or staging volume needs to be provisioned
+
 ## Connector Type 4: File Source Connectors
 
 For structured and unstructured files sitting in enterprise file storage — Google Drive, SharePoint — as opposed to cloud object storage (which typically uses Auto Loader, a standard connector).
@@ -141,6 +166,13 @@ graph LR
 
 Same basic shape as SaaS connectors: connection, pipeline, destination tables. These are particularly useful for feeding unstructured content (PDFs, documents) into AI/RAG applications via Unity Catalog governance.
 
+> **Setup steps (SharePoint example):**
+> 1. Register an app / service credential on the source platform (e.g. an Azure AD app registration for SharePoint) with read access to the target site/drive
+> 2. In the workspace, go to **Data Ingestion** → **Add data** → select the file source connector (e.g. **SharePoint**)
+> 3. Create a Unity Catalog **connection** using that credential
+> 4. Select the site, folder, or drive to ingest from, and choose which file types to include
+> 5. Set the destination catalog/schema and a sync schedule, then create the pipeline
+
 ## Connector Type 5: Streaming Connectors
 
 For continuously ingesting from message buses and event streams — Kafka, RabbitMQ, and similar.
@@ -152,6 +184,14 @@ graph LR
 ```
 
 The pipeline runs continuously on serverless compute, reading messages as they arrive rather than on a batch schedule — the connection stores the source endpoint and credentials so the pipeline can authenticate without needing credentials embedded in its own configuration.
+
+> **Setup steps (Kafka example):**
+> 1. Confirm network reachability from Databricks serverless compute to the Kafka bootstrap servers (VPC peering, Private Link, or public endpoint with proper security group/firewall rules)
+> 2. Gather the broker endpoint(s) and authentication details (SASL credentials, mTLS certs, or similar)
+> 3. In the workspace, go to **Data Ingestion** → **Add data** → select the streaming connector (e.g. **Kafka**)
+> 4. Create a Unity Catalog **connection** storing the endpoint and credentials
+> 5. Configure the ingestion pipeline: topic(s) to subscribe to, starting offset behavior, and the destination streaming table
+> 6. Create the pipeline — it runs continuously rather than on a fixed schedule, since it's reading a live stream
 
 ## Connector Type 6: Community and Custom Connectors
 
