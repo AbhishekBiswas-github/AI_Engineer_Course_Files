@@ -7,6 +7,7 @@ Lakeflow Connect is Databricks' managed ingestion layer — 100+ connectors that
 ```mermaid
 graph TD
     A[Lakeflow Connect] --> B[Managed Connectors<br/>fully automated]
+    A --> J[Partner Connectors<br/>Fivetran, Qlik, Informatica]
     A --> C[Standard Connectors<br/>more control, more setup]
     B --> D[SaaS]
     B --> E[Database / CDC]
@@ -16,7 +17,7 @@ graph TD
     C --> I[Auto Loader, COPY INTO,<br/>custom Structured Streaming]
 ```
 
-The core tradeoff across the platform: **managed connectors** automate almost everything (schema handling, scheduling, retries) but support a defined list of sources; **standard connectors** (Auto Loader, COPY INTO, custom streaming) give you more control and broader source support, at the cost of more manual setup.
+The core tradeoff across the platform: **managed connectors** automate almost everything (schema handling, scheduling, retries) but support a defined list of sources; **partner connectors** trade some platform-nativeness for dramatically broader source coverage via a third party; **standard connectors** (Auto Loader, COPY INTO, custom streaming) give you the most control and broadest flexibility, at the cost of more manual setup.
 
 ## Connector Type 1: SaaS Connectors
 
@@ -206,7 +207,130 @@ graph TD
 
 Community connectors are open-source and community-maintained rather than built by Databricks. Custom connectors are fully self-built when nothing else fits — you take on the maintenance burden yourself.
 
-## Choosing the Right Connector Type — A Decision Guide
+> **Setup steps (community connector):**
+> 1. Search Databricks' community connector listings/repos for one matching your source
+> 2. Review its source code and maintenance status — since Databricks doesn't build or support these, check for recent activity/issues before relying on it
+> 3. Install/import the connector into your workspace (typically as a library or notebook-based package)
+> 4. Configure it with your source's credentials, following that connector's own documentation, since configuration isn't standardized across community connectors
+> 5. Wire it into a Lakeflow Job so it runs on a schedule alongside your other pipelines
+>
+> **Setup steps (custom connector):**
+> 1. Design the ingestion logic using the Structured Streaming or batch APIs, targeting your source's specific SDK/API
+> 2. Write the connector to read from the source and write incrementally to a Delta/streaming table, handling your own checkpointing for incremental reads
+> 3. Package and deploy it as a notebook or job task in your workspace
+> 4. Orchestrate it with Lakeflow Jobs like any other pipeline — you're responsible for its error handling, retries, and monitoring going forward
+
+## Connector Type 7: Partner Connectors
+
+Beyond Databricks-built managed connectors, Databricks partners with third-party ingestion platforms — most notably **Fivetran**, along with Qlik and Informatica — that bring their own connector libraries (hundreds of sources) directly into the Databricks ecosystem, accessible through **Partner Connect**.
+
+```mermaid
+graph LR
+    A[Partner Connect] --> B[Fivetran<br/>500+ connectors]
+    A --> C[Qlik]
+    A --> D[Informatica]
+    B & C & D --> E[Delta Lake tables<br/>via Unity Catalog]
+```
+
+### Why Partner Connectors Exist
+
+Databricks' own managed connectors cover the most common, high-value sources (Salesforce, SQL Server, Workday, etc.), but no single vendor can maintain connectors for every SaaS app, database, or file format in existence. Partner Connect fills that gap — Fivetran alone brings 500+ pre-built connectors (Salesforce, Google Analytics, Facebook Ads, hundreds more) that sync directly into Delta Lake, with automated schema migration and change data capture handled by the partner, not by Databricks itself.
+
+```mermaid
+graph TD
+    A[Partner Connector<br/>e.g. Fivetran] --> B[Pulls full initial snapshot]
+    B --> C[Uses source's own CDC/<br/>change tracking mechanism]
+    C --> D[Syncs incrementally<br/>into Delta tables]
+```
+
+### Key Characteristics
+
+- **Not built or maintained by Databricks** — the partner owns connector logic, reliability, and support; Databricks provides the integration surface (Partner Connect UI, Unity Catalog governance on the destination side)
+- **Broader source coverage** than Databricks' own managed connectors, since partners like Fivetran have built out hundreds of integrations over years
+- **Requires Unity Catalog** on the Databricks side — legacy Hive Metastore-only workspaces aren't supported by newer partner integrations like Fivetran's Databricks connector
+- **Per-user or admin-managed connections** — historically only admins could establish a Partner Connect connection; this has opened up so regular users with the right permissions can self-serve too
+
+> **Setup steps (Fivetran example):**
+> 1. Confirm you have the Databricks workspace admin role, or the specific permissions required for per-user Partner Connect connections
+> 2. In the Databricks workspace sidebar, open **Partner Connect** (or, in newer workspaces, find the partner listed directly in the **Add data** ingestion UI)
+> 3. Select **Fivetran** from the partner tile grid
+> 4. Databricks auto-generates the connection details (SQL warehouse/cluster endpoint, a scoped access token) and hands them to Fivetran automatically — no manual credential copying required
+> 5. In the Fivetran UI that opens, choose the source you want to sync from (e.g. Salesforce, PostgreSQL) and authenticate to that source
+> 6. Configure the destination schema naming and sync frequency in Fivetran
+> 7. Fivetran performs an initial full sync, then continues incremental syncs using the source's own change-tracking mechanism, landing data as Delta tables governed by Unity Catalog
+
+## Connector Type 8: Standard Connectors
+
+Standard connectors trade some of the managed connectors' automation for **broader source support and finer control** — they're the right choice when a managed connector doesn't exist for your source, or when you need to customize behavior a managed pipeline won't let you touch.
+
+```mermaid
+graph TD
+    A[Three Layers of Ingestion<br/>most customizable → most managed] --> B[Structured Streaming<br/>full code-level control]
+    A --> C[Lakeflow Declarative Pipelines<br/>with a standard connector source]
+    A --> D[Databricks SQL<br/>e.g. CREATE STREAMING TABLE]
+```
+
+Databricks recommends starting at the *most managed* layer that supports your source, and only dropping down to a more customizable layer if that doesn't meet your needs.
+
+### The Main Standard Connectors
+
+| Source | Most customizable | Some customization | Most automated |
+|---|---|---|---|
+| Cloud object storage (S3/ADLS/GCS) | Auto Loader + Structured Streaming | Auto Loader + Lakeflow Declarative Pipelines | Auto Loader + Databricks SQL |
+| Apache Kafka | Structured Streaming with Kafka source | Declarative Pipelines with Kafka source | Databricks SQL with Kafka source |
+| Google Pub/Sub | Structured Streaming with Pub/Sub source | Declarative Pipelines with Pub/Sub source | — |
+| SFTP servers | Ingest via Python/SQL | — | — |
+
+### Auto Loader — The Most Common Standard Connector
+
+Auto Loader incrementally and efficiently processes new files as they land in cloud object storage — built for high file volumes (it can handle billions of files for migration/backfill scenarios), tracking which files have already been processed so re-runs don't duplicate data.
+
+```python
+df = (spark.readStream
+    .format("cloudFiles")
+    .option("cloudFiles.format", "csv")
+    .option("cloudFiles.inferSchema", "true")
+    .load("/mnt/raw/patients/"))
+```
+
+```mermaid
+graph LR
+    A[New files land<br/>in cloud storage] --> B[Auto Loader detects them]
+    B --> C[Incrementally processes<br/>only new files]
+    C --> D[Writes to Delta table]
+```
+
+### COPY INTO — The SQL-Only Alternative
+
+For simpler, smaller-scale batch loads, `COPY INTO` is a SQL-native option — though Databricks now recommends `CREATE STREAMING TABLE` syntax over it for incremental cloud storage ingestion, since it offers a more scalable, robust experience for SQL users.
+
+```sql
+COPY INTO patients
+FROM 's3://my-bucket/raw/patients/'
+FILEFORMAT = CSV
+FORMAT_OPTIONS ('header' = 'true');
+```
+
+### read_files — The Simplest Option
+
+For a quick full reload (not incremental), the `read_files` SQL function reads files of any format from a location and returns tabular data directly — no streaming state to manage, but it re-ingests everything on every run.
+
+```sql
+SELECT * FROM read_files('/mnt/raw/patients/', format => 'csv');
+```
+
+### Open-Source Connector Libraries
+
+Databricks also supports importing popular open-source ingestion libraries — **dlt (data load tool)**, **Airbyte**, and **Debezium** — for sources with no managed, partner, or built-in standard option.
+
+> **Setup steps (Auto Loader example):**
+> 1. Set up a Unity Catalog **storage credential** for the cloud storage account (e.g. an access connector resource ID in Azure, an IAM role in AWS)
+> 2. Create an **external location** pointing at the specific cloud storage path, secured by that storage credential
+> 3. Choose your automation layer: raw PySpark with `readStream.format("cloudFiles")` for full control, a Lakeflow Declarative Pipeline for a more managed experience, or `CREATE STREAMING TABLE` in Databricks SQL for the most automated option
+> 4. Specify the file format (`csv`, `json`, `parquet`, etc.) and destination table
+> 5. Start the stream (or let the pipeline/SQL statement manage it) — Auto Loader tracks processed files automatically, so re-running the job won't reprocess files it already ingested
+
+
 
 ```mermaid
 graph TD
