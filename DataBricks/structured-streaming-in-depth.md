@@ -43,7 +43,25 @@ Under the hood (by default), Structured Streaming runs as a series of **micro-ba
 
 ### Streaming Read
 
+Unlike a batch read, a streaming source generally can't infer its schema on the fly — Spark needs to know the schema upfront, since it has to keep processing new files consistently over time without re-inspecting the data on every batch. So `orders_schema` has to be defined explicitly before it's passed in, matching the actual structure of `orders.json` (including the nested `books` array):
+
 ```python
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType
+
+orders_schema = StructType([
+    StructField("order_id", IntegerType()),
+    StructField("timestamp", StringType()),   # cast to TimestampType later if needed
+    StructField("customer_id", IntegerType()),
+    StructField("quantity", IntegerType()),
+    StructField("total", DoubleType()),
+    StructField("books", ArrayType(
+        StructType([
+            StructField("book_id", IntegerType()),
+            StructField("qty", IntegerType())
+        ])
+    ))
+])
+
 streaming_df = (spark.readStream
     .format("json")  # or "cloudFiles" for Auto Loader, "kafka", etc.
     .schema(orders_schema)
@@ -55,11 +73,11 @@ The key difference from a batch read is `readStream` instead of `read` — every
 
 ```mermaid
 graph LR
-    A["spark.read<br/>(batch)"] --> B[Reads a fixed,<br/>complete snapshot]
-    C["spark.readStream<br/>(streaming)"] --> D[Reads continuously,<br/>as new data arrives]
+    A["spark.read<br/>(batch)"] --> B[Reads a fixed,<br/>complete snapshot,<br/>schema can be inferred]
+    C["spark.readStream<br/>(streaming)"] --> D[Reads continuously;<br/>schema must be<br/>declared upfront]
 ```
 
-Common streaming sources: Delta tables, cloud object storage via Auto Loader (`cloudFiles`), Kafka, and other message queues.
+Common streaming sources: Delta tables, cloud object storage via Auto Loader (`cloudFiles`), Kafka, and other message queues. Delta and Kafka sources carry their own schema, so `orders_schema` is specifically needed here because the source is raw JSON files.
 
 ### Streaming Write
 
@@ -259,17 +277,18 @@ graph TD
 ```
 
 ```python
-from pyspark.sql.functions import window, sum as _sum
+from pyspark.sql.functions import window, sum as _sum, to_timestamp
 
 # Static reference data — read normally, not as a stream
 customers_df = spark.read.json("/Volumes/demoworkspace_new/default/my_volume/ecommerce/customers.json")
 books_df = spark.read.json("/Volumes/demoworkspace_new/default/my_volume/ecommerce/books.json")
 
-# Streaming source
+# Streaming source — orders_schema defined above in section 2
 orders_stream_df = (spark.readStream
     .format("json")
     .schema(orders_schema)
     .load("/Volumes/demoworkspace_new/default/my_volume/ecommerce/orders.json")
+    .withColumn("timestamp", to_timestamp("timestamp"))  # string -> real timestamp for windowing
     .withWatermark("timestamp", "10 minutes"))
 
 # Join the stream against static customer data
@@ -288,7 +307,7 @@ query = (hourly_revenue_df.writeStream
     .table("orders_hourly_revenue"))
 ```
 
-This example uses several pieces from above at once: `readStream` on `orders.json`, a watermark on the real `timestamp` field (which is what makes the windowed aggregation and the stream-static join safe to run continuously), `outputMode("update")` since only changed windows need rewriting, and a dedicated checkpoint location distinct from the earlier `orders_stream` example.
+This example uses several pieces from above at once: the `orders_schema` defined in section 2, a cast from the JSON's string `timestamp` to a real `TimestampType` (required before `withWatermark`/`window` can use it), a watermark on that field (which is what makes the windowed aggregation and the stream-static join safe to run continuously), `outputMode("update")` since only changed windows need rewriting, and a dedicated checkpoint location distinct from the earlier `orders_stream` example.
 
 ## Summary
 
